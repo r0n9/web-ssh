@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.jcraft.jsch.Channel;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
 import vip.r0n9.JsonUtil;
 
@@ -47,8 +48,8 @@ public class WebSshHandler {
         addOnlineCount();
         System.out.println("有新链接 " + session.getUserProperties().get("ClientIP") + " 加入!当前在线人数为" + getOnlineCount());
 
-        jschSession = jsch.getSession("rong", "192.168.1.94", 22);
-        jschSession.setPassword("123456");
+        jschSession = jsch.getSession("rong", "118.25.21.157", 22);
+        jschSession.setPassword("fanrong330");
         java.util.Properties config = new java.util.Properties();
         config.put("StrictHostKeyChecking", "no");
         jschSession.setConfig(config);
@@ -67,12 +68,37 @@ public class WebSshHandler {
 
                 try {
                     BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
-                    String msg = null;
+                    String msg = "";
+                    String preMsg = "";
                     while ((msg = bufferedReader.readLine()) != null) { // 这里会阻塞，所以必须起线程来读取channel返回内容
-                        System.out.println("-- " + msg);
-                        byte[] bytes = ("\r\n" + msg).getBytes();
+
+                        msg = "\r\n" + msg;
+
+                        if (preMsg.equals(msg)) { // 直接回车
+                            byte[] bytes = msg.getBytes();
+                            ByteBuffer byteBuffer = ByteBuffer.wrap(bytes, 0, bytes.length);
+                            synchronized (this) {
+                                session.getBasicRemote().sendBinary(byteBuffer);
+                            }
+                            continue;
+                        } else if (msg.equals(preMsg + dataToDst.toString())) { // 命令执行，ignore第一行
+                            continue;
+                        }
+
+                        if ("".equals(msg) || "\r\n".equals(msg)) {
+                            continue;
+                        }
+
+                        preMsg = msg;
+
+                        System.out.println("<<" + msg + ">>");
+                        byte[] bytes = msg.getBytes();
                         ByteBuffer byteBuffer = ByteBuffer.wrap(bytes, 0, bytes.length);
-                        session.getBasicRemote().sendBinary(byteBuffer);
+                        synchronized (this) {
+                            session.getBasicRemote().sendBinary(byteBuffer);
+                        }
+
+                        dataToDst = new StringBuilder();
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -115,7 +141,6 @@ public class WebSshHandler {
             if ("\r".equals(str)) {
                 if (dataToDst.length() > 0) {
                     str = "\r\n";
-                    dataToDst = new StringBuilder();
                 }
             } else {
                 dataToDst.append(str);
@@ -125,8 +150,13 @@ public class WebSshHandler {
             outputStream.write(bytes);
             outputStream.flush();
 
-            ByteBuffer byteBuffer = ByteBuffer.wrap(bytes, 0, bytes.length);
-            session.getBasicRemote().sendBinary(byteBuffer);
+            if (!"\r\n".equals(str) && !"\r".equals(str)) {
+                System.out.println("[[" + str + "]]");
+                ByteBuffer byteBuffer = ByteBuffer.wrap(bytes, 0, bytes.length);
+                synchronized (this) {
+                    session.getBasicRemote().sendBinary(byteBuffer);
+                }
+            }
 
             System.out.println("dataToDst = " + dataToDst);
 
