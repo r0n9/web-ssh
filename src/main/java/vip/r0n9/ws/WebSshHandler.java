@@ -48,8 +48,8 @@ public class WebSshHandler {
         addOnlineCount();
         System.out.println("有新链接 " + session.getUserProperties().get("ClientIP") + " 加入!当前在线人数为" + getOnlineCount());
 
-        jschSession = jsch.getSession("rong", "118.25.21.157", 22);
-        jschSession.setPassword("fanrong330");
+        jschSession = jsch.getSession("xxx", "xxxx", 22);
+        jschSession.setPassword("xxx");
         java.util.Properties config = new java.util.Properties();
         config.put("StrictHostKeyChecking", "no");
         jschSession.setConfig(config);
