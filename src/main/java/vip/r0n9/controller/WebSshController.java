@@ -9,6 +9,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 import vip.r0n9.JsonUtil;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+
 
 @Controller
 public class WebSshController {
@@ -20,7 +24,15 @@ public class WebSshController {
 
     @RequestMapping(value = "/", method = RequestMethod.POST)
     @ResponseBody
-    public ObjectNode connect() {
+    public ObjectNode connect(HttpServletRequest request) {
+        String ip  = request.getParameter("hostname");
+        Integer port  = new Integer(request.getParameter("port"));
+        String username  = request.getParameter("username");
+        String password  = request.getParameter("password");
+        request.getSession().setAttribute("ip",ip);
+        request.getSession().setAttribute("port",port);
+        request.getSession().setAttribute("username",username);
+        request.getSession().setAttribute("password",password);
         ObjectNode node = JsonUtil.createObjectNode();
         node.put("status", 0);
         node.put("id", "1");

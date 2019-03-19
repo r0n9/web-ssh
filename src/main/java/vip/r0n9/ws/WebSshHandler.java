@@ -11,6 +11,7 @@ import vip.r0n9.JsonUtil;
 import javax.websocket.*;
 import javax.websocket.server.PathParam;
 import javax.websocket.server.ServerEndpoint;
+import javax.servlet.http.HttpSession;
 import java.io.*;
 import java.nio.ByteBuffer;
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -39,20 +40,27 @@ public class WebSshHandler {
 
     private OutputStream outputStream;
 
+    private static HttpSession httpSession;
+
     private Thread thread;
 
     @OnOpen
-    public void onOpen(final Session session, @PathParam("id") String id) throws JSchException, IOException, EncodeException, InterruptedException {
+    public void onOpen(final Session session, @PathParam("id") String id,EndpointConfig config) throws JSchException, IOException, EncodeException, InterruptedException {
         this.session = session;
         webSocketSet.add(this);
         addOnlineCount();
-        System.out.println("有新链接 " + session.getUserProperties().get("ClientIP") + " 加入!当前在线人数为" + getOnlineCount());
+        httpSession = (HttpSession) config.getUserProperties().get(HttpSession.class.getName());
+        String ip =  (String)httpSession.getAttribute("ip");
+        Integer port =  (Integer)httpSession.getAttribute("port");
+        String user =  (String)httpSession.getAttribute("username");
+        String pwd =  (String)httpSession.getAttribute("password");
+        System.out.println("有新链接 " + ip + " 加入!当前在线人数为" + getOnlineCount());
 
-        jschSession = jsch.getSession("xxx", "xxxx", 22);
-        jschSession.setPassword("xxx");
-        java.util.Properties config = new java.util.Properties();
-        config.put("StrictHostKeyChecking", "no");
-        jschSession.setConfig(config);
+        jschSession = jsch.getSession(user,ip, port);
+        jschSession.setPassword(pwd);
+        java.util.Properties Nconfig = new java.util.Properties();
+        Nconfig.put("StrictHostKeyChecking", "no");
+        jschSession.setConfig(Nconfig);
         jschSession.connect();
 
         channel = jschSession.openChannel("shell");

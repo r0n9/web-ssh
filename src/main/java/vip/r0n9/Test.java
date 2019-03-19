@@ -10,8 +10,8 @@ public class Test {
     public static void main(String[] args) throws JSchException, IOException {
         JSch jsch = new JSch();
 
-        session = jsch.getSession("rong", "192.168.1.94", 22);
-        session.setPassword("123456");
+        session = jsch.getSession("root", "111.231.82.173", 22);
+        session.setPassword("jinjin123");
 
         java.util.Properties config = new java.util.Properties();
         config.put("StrictHostKeyChecking", "no");
