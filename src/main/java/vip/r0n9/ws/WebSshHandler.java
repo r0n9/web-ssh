@@ -4,23 +4,30 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.jcraft.jsch.Channel;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.JSchException;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
 import vip.r0n9.JsonUtil;
+import vip.r0n9.model.HostLoginInfo;
 
 import javax.websocket.*;
 import javax.websocket.server.PathParam;
 import javax.websocket.server.ServerEndpoint;
 import java.io.*;
 import java.nio.ByteBuffer;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.atomic.LongAdder;
 
 @ServerEndpoint(value = "/ssh/{id}", configurator = WebSocketConfigrator.class)
 @Component
 public class WebSshHandler {
 
 
-    private static int onlineCount = 0;
+    public static LongAdder onlineCount = new LongAdder();
+
+    public static LongAdder websocketSessionId = new LongAdder();
+
+    public static Map<Long, HostLoginInfo> hostLoginInfoMap = new ConcurrentHashMap<>();
 
     private static CopyOnWriteArraySet<WebSshHandler> webSocketSet = new CopyOnWriteArraySet<>();
 
@@ -42,14 +49,17 @@ public class WebSshHandler {
     private Thread thread;
 
     @OnOpen
-    public void onOpen(final Session session, @PathParam("id") String id) throws JSchException, IOException, EncodeException, InterruptedException {
+    public void onOpen(final Session session, @PathParam("id") Long id) throws JSchException, IOException, EncodeException, InterruptedException {
         this.session = session;
         webSocketSet.add(this);
-        addOnlineCount();
-        System.out.println("有新链接 " + session.getUserProperties().get("ClientIP") + " 加入!当前在线人数为" + getOnlineCount());
+        onlineCount.increment();
+        System.out.println("有新链接 " + session.getUserProperties().get("ClientIP") + " 加入!当前在线人数为" + onlineCount.longValue());
 
-        jschSession = jsch.getSession("xxx", "xxxx", 22);
-        jschSession.setPassword("xxx");
+        HostLoginInfo hostLoginInfo = hostLoginInfoMap.get(id);
+
+        jschSession = jsch.getSession(hostLoginInfo.getUsername(), hostLoginInfo.getHostname(), hostLoginInfo.getPort());
+        jschSession.setPassword(hostLoginInfo.getPassword());
+
         java.util.Properties config = new java.util.Properties();
         config.put("StrictHostKeyChecking", "no");
         jschSession.setConfig(config);
@@ -115,8 +125,8 @@ public class WebSshHandler {
     @OnClose
     public void onClose() {
         webSocketSet.remove(this);
-        subOnlineCount();
-        System.out.println("有一链接关闭! 当前在线人数为" + getOnlineCount());
+        onlineCount.decrement();
+        System.out.println("有一链接关闭! 当前在线人数为" + onlineCount.longValue());
 
         channel.disconnect();
         jschSession.disconnect();
@@ -164,18 +174,5 @@ public class WebSshHandler {
         }
 
 
-    }
-
-
-    public static synchronized int getOnlineCount() {
-        return WebSshHandler.onlineCount;
-    }
-
-    public static synchronized void addOnlineCount() {
-        WebSshHandler.onlineCount++;
-    }
-
-    public static synchronized void subOnlineCount() {
-        WebSshHandler.onlineCount--;
     }
 }
